@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Bouncing Red Sphere</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: #111;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle at top, #222 0%, #000 70%);
+    }
+  </style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+
+<script>
+  const canvas = document.getElementById("canvas");
+  const ctx = canvas.getContext("2d");
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  const sphere = {
+    x: canvas.width / 3,
+    y: canvas.height / 4,
+    vx: 5,
+    vy: 0,
+    radius: 30
+  };
+
+  const gravity = 0.5;
+  const bounceFactor = 0.8;
+  const energyBoost = 3.0;
+
+  function drawSphere() {
+    const gradient = ctx.createRadialGradient(
+      sphere.x - sphere.radius / 3,
+      sphere.y - sphere.radius / 3,
+      5,
+      sphere.x,
+      sphere.y,
+      sphere.radius
+    );
+    gradient.addColorStop(0, "#ff9999");
+    gradient.addColorStop(0.4, "#ff3333");
+    gradient.addColorStop(1, "#660000");
+
+    ctx.beginPath();
+    ctx.fillStyle = gradient;
+    ctx.arc(sphere.x, sphere.y, sphere.radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function update() {
+    sphere.vy += gravity;
+    sphere.x += sphere.vx;
+    sphere.y += sphere.vy;
+
+    // Left/right walls
+    if (sphere.x - sphere.radius < 0) {
+      sphere.x = sphere.radius;
+      sphere.vx *= -bounceFactor;
+    } else if (sphere.x + sphere.radius > canvas.width) {
+      sphere.x = canvas.width - sphere.radius;
+      sphere.vx *= -bounceFactor;
+    }
+
+    // Floor
+    if (sphere.y + sphere.radius > canvas.height) {
+      sphere.y = canvas.height - sphere.radius;
+      sphere.vy *= -bounceFactor;
+
+      // Add extra energy on bounce
+      sphere.vy -= energyBoost;
+    }
+
+    // Ceiling
+    if (sphere.y - sphere.radius < 0) {
+      sphere.y = sphere.radius;
+      sphere.vy *= -bounceFactor;
+    }
+  }
+
+  function loop() {
+    // Leave a trail with a translucent overlay
+    ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    update();
+    drawSphere();
+
+    requestAnimationFrame(loop);
+  }
+
+  // Initial background
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  loop();
+</script>
+</body>
+</html>
