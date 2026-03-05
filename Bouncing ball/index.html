@@ -34,26 +34,57 @@
   window.addEventListener("resize", resize);
   resize();
 
-  const sphere = {
-    x: canvas.width / 3,
-    y: canvas.height / 4,
-    vx: 5,
+  // Ball
+  const ball = {
+    x: canvas.width / 2,
+    y: canvas.height / 3,
+    vx: 4,
     vy: 0,
-    radius: 30
+    radius: 25
   };
 
-  const gravity = 0.5;
-  const bounceFactor = 0.8;
-  const energyBoost = 3.0;
+  // Paddle
+  const paddle = {
+    width: 160,
+    height: 20,
+    x: canvas.width / 2 - 80,
+    y: canvas.height - 60,
+    speed: 10,
+    movingLeft: false,
+    movingRight: false
+  };
 
-  function drawSphere() {
+  // Game state
+  let lives = 3;
+  let score = 0;
+
+  const gravity = 0.4;
+  const bounceFactor = 0.8;
+
+  // Keyboard controls
+  document.addEventListener("keydown", e => {
+    if (e.key === "ArrowLeft") paddle.movingLeft = true;
+    if (e.key === "ArrowRight") paddle.movingRight = true;
+  });
+
+  document.addEventListener("keyup", e => {
+    if (e.key === "ArrowLeft") paddle.movingLeft = false;
+    if (e.key === "ArrowRight") paddle.movingRight = false;
+  });
+
+  // Mouse controls
+  document.addEventListener("mousemove", e => {
+    paddle.x = e.clientX - paddle.width / 2;
+  });
+
+  function drawBall() {
     const gradient = ctx.createRadialGradient(
-      sphere.x - sphere.radius / 3,
-      sphere.y - sphere.radius / 3,
+      ball.x - ball.radius / 3,
+      ball.y - ball.radius / 3,
       5,
-      sphere.x,
-      sphere.y,
-      sphere.radius
+      ball.x,
+      ball.y,
+      ball.radius
     );
     gradient.addColorStop(0, "#ff9999");
     gradient.addColorStop(0.4, "#ff3333");
@@ -61,54 +92,92 @@
 
     ctx.beginPath();
     ctx.fillStyle = gradient;
-    ctx.arc(sphere.x, sphere.y, sphere.radius, 0, Math.PI * 2);
+    ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
     ctx.fill();
   }
 
+  function drawPaddle() {
+    ctx.fillStyle = "#eee";
+    ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
+  }
+
+  function drawHUD() {
+    ctx.fillStyle = "#fff";
+    ctx.font = "20px Arial";
+    ctx.fillText("Score: " + score, 20, 30);
+    ctx.fillText("Lives: " + lives, 20, 60);
+  }
+
+  function resetBall() {
+    ball.x = canvas.width / 2;
+    ball.y = canvas.height / 3;
+    ball.vx = 4 * (Math.random() > 0.5 ? 1 : -1);
+    ball.vy = 0;
+  }
+
   function update() {
-    sphere.vy += gravity;
-    sphere.x += sphere.vx;
-    sphere.y += sphere.vy;
+    // Paddle movement (keyboard)
+    if (paddle.movingLeft) paddle.x -= paddle.speed;
+    if (paddle.movingRight) paddle.x += paddle.speed;
 
-    // Left/right walls
-    if (sphere.x - sphere.radius < 0) {
-      sphere.x = sphere.radius;
-      sphere.vx *= -bounceFactor;
-    } else if (sphere.x + sphere.radius > canvas.width) {
-      sphere.x = canvas.width - sphere.radius;
-      sphere.vx *= -bounceFactor;
+    // Keep paddle inside screen
+    paddle.x = Math.max(0, Math.min(canvas.width - paddle.width, paddle.x));
+
+    // Ball physics
+    ball.vy += gravity;
+    ball.x += ball.vx;
+    ball.y += ball.vy;
+
+    // Wall collisions
+    if (ball.x - ball.radius < 0) {
+      ball.x = ball.radius;
+      ball.vx *= -bounceFactor;
+    }
+    if (ball.x + ball.radius > canvas.width) {
+      ball.x = canvas.width - ball.radius;
+      ball.vx *= -bounceFactor;
+    }
+    if (ball.y - ball.radius < 0) {
+      ball.y = ball.radius;
+      ball.vy *= -bounceFactor;
     }
 
-    // Floor
-    if (sphere.y + sphere.radius > canvas.height) {
-      sphere.y = canvas.height - sphere.radius;
-      sphere.vy *= -bounceFactor;
+    // Paddle collision
+    const hitPaddle =
+      ball.y + ball.radius >= paddle.y &&
+      ball.x >= paddle.x &&
+      ball.x <= paddle.x + paddle.width &&
+      ball.vy > 0;
 
-      // Add extra energy on bounce
-      sphere.vy -= energyBoost;
+    if (hitPaddle) {
+      ball.y = paddle.y - ball.radius;
+      ball.vy *= -bounceFactor;
+
+      // Add angle based on where it hits the paddle
+      const hitPoint = (ball.x - paddle.x) / paddle.width - 0.5;
+      ball.vx += hitPoint * 6;
+
+      score++;
     }
 
-    // Ceiling
-    if (sphere.y - sphere.radius < 0) {
-      sphere.y = sphere.radius;
-      sphere.vy *= -bounceFactor;
+    // Missed the paddle
+    if (ball.y - ball.radius > canvas.height) {
+      lives--;
+      resetBall();
     }
   }
 
   function loop() {
-    // Leave a trail with a translucent overlay
     ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     update();
-    drawSphere();
+    drawBall();
+    drawPaddle();
+    drawHUD();
 
     requestAnimationFrame(loop);
   }
-
-  // Initial background
-  ctx.fillStyle = "#000";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   loop();
 </script>
